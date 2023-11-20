@@ -1,6 +1,7 @@
-const books = require('../books/books')
+// const books = require('../books/books')
+const Books = require('../config/model')
 
-const addBook = (request, h) => {
+const addBook = async(request, h) => {
     const { 
         name, 
         year, 
@@ -11,7 +12,7 @@ const addBook = (request, h) => {
         readPage,
         reading 
     } = request.payload
-    const id = Math.random().toString(36).substring(2)
+    // const id = Math.random().toString(36).substring(2)
     const insertedAt = new Date().toISOString()
     const updatedAt = insertedAt
     const finished = pageCount == readPage
@@ -25,7 +26,7 @@ const addBook = (request, h) => {
         return response
     }
 
-    if(readPage > pageCount){
+    if(parseInt(readPage) > parseInt(pageCount)){
         const response = h.response({
         status: 'fail',
         message: 'Gagal menambahkan buku. readPage tidak boleh lebih besar dari pageCount',
@@ -35,29 +36,30 @@ const addBook = (request, h) => {
     }
 
     const newBook = {
-        id, name, year, author, summary, publisher, pageCount, readPage, finished, reading, insertedAt, updatedAt
+       id:'', name, year, author, summary, publisher, pageCount, readPage, finished, reading, insertedAt, updatedAt
     }
     
-    books.push(newBook)
-    const cekInsert = books.filter((book) => book.id === id).length > 0
-    if(cekInsert){
+    try {
+        const insert = await Books.create(newBook)
         const response = h.response({
             status: 'success',
             message: 'Buku berhasil ditambahkan',
             data: {
-              bookId: id,
+              bookId: insert.id,
+              name: insert.name
             },
         })
         response.code(201)
         return response
+    } catch (error) {
+        const response = h.response({
+            status: 'fail',
+            message: 'Buku gagal ditambahkan',
+            error
+        })
+        response.code(500)
+        return response
     }
-    const response = h.response({
-        status: 'fail',
-        message: 'Buku gagal ditambahkan',
-    })
-    response.code(500)
-    return response
-
 }
 
 module.exports = {addBook}

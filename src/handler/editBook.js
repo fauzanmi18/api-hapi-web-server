@@ -1,41 +1,26 @@
-const books = require('../books/books')
+// const books = require('../books/books')
+const Books = require('../config/model')
 
-const editBooks = (request, h) => {
+const editBooks = async(request, h) => {
     const { id } = request.params
-    const updatedAt = new Date().toISOString()
-    const { 
-        name, 
-        year, 
-        author, 
-        summary, 
-        publisher, 
-        pageCount, 
-        readPage, 
-        reading 
-    } = request.payload
+    // const updatedAt = new Date().toLocaleString('en-US',{ timeZone: 'Asia/Jakarta' })
+    try {
+        const existingBook = await Books.findOne({
+            where: {
+                id: id,
+            },
+        })
 
-    if(!name){
-        const response = h.response({
-        status: 'fail',
-        message: 'Gagal memperbarui buku. Mohon isi nama buku',
-        });
-        response.code(400)
-        return response
-    }
+        if (!existingBook) {
+            const response = h.response({
+                status: 'fail',
+                message: 'Buku tidak ditemukan',
+            })
+            response.code(404)
+            return response
+        }
 
-    if(readPage > pageCount){
-        const response = h.response({
-        status: 'fail',
-        message: 'Gagal memperbarui buku. readPage tidak boleh lebih besar dari pageCount',
-        });
-        response.code(400)
-        return response
-    }
-
-    const index = books.findIndex((b) => b.id === id)
-    if(index !== -1){
-        books[index] = {
-            ...books[index],
+        const {
             name,
             year,
             author,
@@ -44,22 +29,41 @@ const editBooks = (request, h) => {
             pageCount,
             readPage,
             reading,
-            updatedAt
-          }
-          const response = h.response({
-            status: 'success',
-            message: 'Buku berhasil diperbarui'
-          })
-          response.code(200)
-          return response
-        }
+        } = request.payload
 
-    const response = h.response({
-        status: 'fail',
-        message: 'Gagal memperbarui buku. Id tidak ditemukan',
-    })
-    response.code(404)
-    return response
+        const updatedBook = await existingBook.update({
+            name,
+            year,
+            author,
+            summary,
+            publisher,
+            pageCount,
+            readPage,
+            reading
+        })
+
+        const response = h.response({
+            status: 'success',
+            message: 'Buku berhasil diperbarui',
+            data: {
+                book: {
+                    id: updatedBook.id,
+                    name: updatedBook.name,
+                    publisher: updatedBook.publisher
+                },
+            },
+        })
+        response.code(200)
+        return response
+    } catch (error) {
+        console.error('Error while updating book:', error)
+        const response = h.response({
+            status: 'fail',
+            message: 'Gagal memperbarui buku',
+        })
+        response.code(500)
+        return response
+    }
 }
 
 module.exports = {editBooks}

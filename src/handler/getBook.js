@@ -1,33 +1,65 @@
-const books = require('../books/books')
+// const books = require('../books/books')
+// const db = require('../config/database')
+const Books = require('../config/model')
 
-const getBook = (request, h) => {
+const getBook = async(request, h) => {
     const { name, reading, finished } = request.query
-    let cekBuku = [...books]
+
+    try {
+        const searchCriteria = {}
+        if (name) {
+            searchCriteria.name = name
+        }
+        if (reading) {
+            searchCriteria.reading = reading
+        }
+        if (finished) {
+            searchCriteria.finished = finished
+        }
+
+        const page = parseInt(request.query.page) || 1
+        const perPage = parseInt(request.query.perPage) || 10
+
+        const offset = (page - 1) * perPage
+
+        const cekBuku = await Books.findAndCountAll({
+            where: searchCriteria,
+            limit: perPage,
+            offset
+            // attributes: ['id', 'name', 'publisher'],
+        })
+
+        const totalPages = Math.ceil(cekBuku.count / perPage)
+        if(page > totalPages){
+            const response = h.response({
+                status: 'error',
+                message: 'Page not found'
+            })
+            response.code(404)
+            return response
+        }
+
+        const response = h.response({
+            status: 'success',
+            data: cekBuku.rows,
+            perPage,
+            currentPage: page,
+            totalPages: totalPages,
+            nextPage: page < totalPages ? page + 1 : null,
+            lastPage: totalPages
+        })
+        response.code(200)
+        return response
+    } catch (error) {
+        console.log('error while getting books', error)
+        const response = h.response({
+        status: 'error',
+        message: 'Error terjadi'
+        })
+        response.code(500)
+        return response
+    }
     
-    if (reading) {
-        cekBuku = cekBuku.filter(book => book.reading == (reading == 1))
-    }
-
-    if (finished) {
-        cekBuku = cekBuku.filter(book => book.finished == (finished == 1))
-    }
-
-    if (name) {
-        cekBuku = cekBuku.filter((book) => book.name.toLowerCase().includes(name.toLowerCase()));
-    }
-
-    const response = h.response({
-        status: 'success',
-        data: {
-          books: cekBuku.map((book) => ({
-            id: book.id,
-            name: book.name,
-            publisher: book.publisher
-          })),
-        },
-    })
-    response.code(200)
-    return response
 }
 
 module.exports = {getBook}
